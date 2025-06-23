@@ -12,6 +12,8 @@ app.use(cors());
 // Load data
 const data = JSON.parse(fs.readFileSync('office_hours.json', 'utf-8'));
 
+console.log('Loaded people:', data.length);
+
 // Setup Fuse.js for smart search
 const fuse = new Fuse(data, {
   keys: ['name'],
@@ -88,6 +90,8 @@ app.get('/api/query', (req, res) => {
   if (!q) return res.status(400).json({ error: 'Missing q parameter' });
   q = q.trim().toLowerCase();
 
+  console.log('Query:', q);
+
   // 1. Check for day queries
   const day = days.find(d => q.includes(d));
   if (day) {
@@ -146,9 +150,16 @@ app.get('/api/query', (req, res) => {
       ]
     });
   }
-  // Otherwise, use fuzzy search for best match
+  // If no direct matches, use fuzzy search for best match
   const people = findByName(name);
-  if (people.length > 0) {
+  if (people.length > 1) {
+    return res.json({
+      type: 'multiple',
+      people,
+      suggestions: people.map(p => p.name)
+    });
+  }
+  if (people.length === 1) {
     return res.json({
       type: 'person',
       person: people[0],

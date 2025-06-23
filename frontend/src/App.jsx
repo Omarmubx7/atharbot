@@ -3,7 +3,7 @@ import logo from './Screenshot_2025-06-21_015705-removebg-preview (1).png';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-const API_URL = 'http://localhost:3001/api/query'; // Use new smart endpoint
+const API_URL = 'http://localhost:3001/api/query';
 
 // Color palettes for dark and light mode
 const PORTAL_LIGHT = {
@@ -356,7 +356,16 @@ export default function App() {
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask anything about office hours, professors, days, or departments..."
-            style={{ flex: 1, padding: 12, borderRadius: 8, border: '1px solid #bfc9d1', background: '#f4f7fa', color: COLORS.text, fontSize: 16, transition: 'background 0.3s, color 0.3s' }}
+            style={{
+              flex: 1,
+              padding: 12,
+              borderRadius: 8,
+              border: '1px solid #bfc9d1',
+              background: dark ? '#232b2f' : '#f4f7fa',
+              color: dark ? '#fff' : COLORS.text,
+              fontSize: 16,
+              transition: 'background 0.3s, color 0.3s'
+            }}
             disabled={loading}
           />
           <button type="submit" disabled={loading || !input.trim()} style={{
@@ -378,6 +387,10 @@ export default function App() {
         .chat-bubble strong, .chat-bubble b {
           color: ${COLORS.accent} !important;
           font-weight: 900 !important;
+        }
+        input::placeholder {
+          color: ${dark ? '#eee' : '#888'};
+          opacity: 1;
         }
         @media (max-width: 600px) {
           .chat-bubble { font-size: 1rem !important; }
