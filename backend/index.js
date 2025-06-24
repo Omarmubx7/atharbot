@@ -92,7 +92,8 @@ app.get('/api/query', (req, res) => {
   if (!q) return res.status(400).json({ error: 'Missing q parameter' });
   q = q.trim().toLowerCase();
 
-  console.log('Query:', q);
+  console.log('Query received:', q);
+  console.log('All names in data:', data.map(p => p.name));
 
   // 1. Check for day queries
   const day = days.find(d => q.includes(d));
@@ -131,6 +132,7 @@ app.get('/api/query', (req, res) => {
   let name = q;
   if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
   let allMatches = findByName(name);
+  console.log('Matches found:', allMatches.map(p => p.name));
   if (allMatches.length > 1) {
     return res.json({
       type: 'multiple',
