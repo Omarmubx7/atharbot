@@ -128,13 +128,14 @@ app.get('/api/query', (req, res) => {
   const nameMatch = q.match(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?|)\s*([a-z\s]+)/i);
   let name = q;
   if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
-  // Find all people whose name includes the search term
+  console.log('Search name:', name); // Debug log
   let allMatches = data.filter(person =>
     person.name && person.name.toLowerCase().includes(name)
   );
-  // If no direct matches, use fuzzy search for best match
+  console.log('Direct matches found:', allMatches.length); // Debug log
   if (allMatches.length === 0) {
     allMatches = findByName(name);
+    console.log('Fuzzy matches found:', allMatches.length); // Debug log
   }
   if (allMatches.length > 1) {
     return res.json({
