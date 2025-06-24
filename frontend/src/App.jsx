@@ -3,7 +3,7 @@ import logo from './Screenshot_2025-06-21_015705-removebg-preview (1).png';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-const API_URL = 'https://atharbot-production.up.railway.app/api/query';
+const API_URL = import.meta.env.VITE_API_URL || 'https://atharbot-production.up.railway.app/api/query';
 
 // Color palettes for dark and light mode
 const PORTAL_LIGHT = {
@@ -204,7 +204,7 @@ export default function App() {
         setLoading(false);
         return;
       } else if (data.error) {
-        botMsg = data.error;
+        botMsg = data.error + ' Try a full name or check spelling.';
         newContext = null;
       } else {
         botMsg = 'Sorry, I could not understand your question.';
