@@ -3,14 +3,18 @@ import cors from 'cors';
 import fs from 'fs';
 import Fuse from 'fuse.js';
 import natural from 'natural';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 app.use(cors());
 
 // Load data
-const data = JSON.parse(fs.readFileSync('office_hours.json', 'utf-8'));
+const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'office_hours.json'), 'utf-8'));
 
 console.log('Loaded people:', data.length);
 
