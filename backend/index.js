@@ -129,9 +129,13 @@ app.get('/api/query', (req, res) => {
   let name = q;
   if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
   // Find all people whose name includes the search term
-  const allMatches = data.filter(person =>
+  let allMatches = data.filter(person =>
     person.name && person.name.toLowerCase().includes(name)
   );
+  // If no direct matches, use fuzzy search for best match
+  if (allMatches.length === 0) {
+    allMatches = findByName(name);
+  }
   if (allMatches.length > 1) {
     return res.json({
       type: 'multiple',
@@ -143,26 +147,6 @@ app.get('/api/query', (req, res) => {
     return res.json({
       type: 'person',
       person: allMatches[0],
-      suggestions: [
-        'Ask about their office hours on a specific day',
-        'Ask about another professor',
-        'Ask about their department'
-      ]
-    });
-  }
-  // If no direct matches, use fuzzy search for best match
-  const people = findByName(name);
-  if (people.length > 1) {
-    return res.json({
-      type: 'multiple',
-      people,
-      suggestions: people.map(p => p.name)
-    });
-  }
-  if (people.length === 1) {
-    return res.json({
-      type: 'person',
-      person: people[0],
       suggestions: [
         'Ask about their office hours on a specific day',
         'Ask about another professor',
