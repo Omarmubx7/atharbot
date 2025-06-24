@@ -10,12 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-app.use(cors());
-
-// Load data
-const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'office_hours.json'), 'utf-8'));
-
+const dataPath = path.join(__dirname, 'office_hours.json');
+console.log('Looking for data file at:', dataPath);
+console.log('File exists:', fs.existsSync(dataPath));
+const data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
 console.log('Loaded people:', data.length);
 
 // Setup Fuse.js for smart search
@@ -132,12 +130,7 @@ app.get('/api/query', (req, res) => {
   const nameMatch = q.match(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?|)\s*([a-z\s]+)/i);
   let name = q;
   if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
-  let allMatches = data.filter(person =>
-    person.name && person.name.toLowerCase().includes(name)
-  );
-  if (allMatches.length === 0) {
-    allMatches = findByName(name);
-  }
+  let allMatches = findByName(name);
   if (allMatches.length > 1) {
     return res.json({
       type: 'multiple',
