@@ -3,7 +3,7 @@ import logo from './Screenshot_2025-06-21_015705-removebg-preview (1).png';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-const API_URL = 'http://localhost:3001/api/query';
+const API_URL = 'https://atharbot.onrender.com/api/query';
 
 // Color palettes for dark and light mode
 const PORTAL_LIGHT = {
