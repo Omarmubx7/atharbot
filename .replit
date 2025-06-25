@@ -12,7 +12,7 @@ localPort = 3001
 externalPort = 80
 
 [workflows]
-runButton = "Start Full Stack"
+runButton = "Start Backend Only"
 
 [[workflows.workflow]]
 name = "Start Backend"
@@ -44,6 +44,19 @@ args = "cd frontend && npm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd frontend && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && npm start"
+
+[[workflows.workflow]]
+name = "Start Backend Only"
+author = 44245221
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
