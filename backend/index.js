@@ -6,6 +6,9 @@ import natural from 'natural';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -15,8 +18,6 @@ app.use(express.json());
 
 // Serve static files from frontend dist folder
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataPath = path.join(__dirname, 'office_hours.json');
 console.log('Looking for data file at:', dataPath);
 console.log('File exists:', fs.existsSync(dataPath));
