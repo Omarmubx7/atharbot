@@ -161,8 +161,8 @@ app.get('/api/query', (req, res) => {
   
   // If the query doesn't contain day or department keywords, treat it as a name search
   if (name && !day && !dept) {
-    const allMatches = findByName(name);
     console.log('Searching for name:', name);
+    const allMatches = findByName(name);
     console.log('Matches found:', allMatches.map(p => p.name));
     if (allMatches.length > 1) {
       return res.json({
