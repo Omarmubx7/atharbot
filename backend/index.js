@@ -13,6 +13,9 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from frontend dist folder
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataPath = path.join(__dirname, 'office_hours.json');
 console.log('Looking for data file at:', dataPath);
@@ -180,6 +183,11 @@ app.get('/api/query', (req, res) => {
 
   // 5. Fallback
   return res.status(404).json({ error: 'Sorry, I could not understand your question.' });
+});
+
+// Catch-all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
