@@ -9,6 +9,10 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Enable CORS
+app.use(cors());
+app.use(express.json());
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataPath = path.join(__dirname, 'office_hours.json');
 console.log('Looking for data file at:', dataPath);
@@ -178,6 +182,7 @@ app.get('/api/query', (req, res) => {
   return res.status(404).json({ error: 'Sorry, I could not understand your question.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); console.log('Backend updated!');
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+});
+console.log('Backend updated!');
