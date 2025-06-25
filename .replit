@@ -1,0 +1,12 @@
+modules = ["nodejs-20", "web"]
+run = "node backend/index.js"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "node backend/index.js"]
+
+[[ports]]
+localPort = 3001
+externalPort = 80
