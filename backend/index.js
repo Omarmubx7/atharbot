@@ -6,10 +6,18 @@ import natural from 'natural';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Enable CORS
+app.use(cors());
+app.use(express.json());
+
+// Serve static files from frontend dist folder
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 const dataPath = path.join(__dirname, 'office_hours.json');
 console.log('Looking for data file at:', dataPath);
 console.log('File exists:', fs.existsSync(dataPath));
@@ -44,17 +52,37 @@ function findByDepartment(dept) {
 }
 
 function findByName(name) {
-  let results = fuse.search(name);
+  name = name.toLowerCase().trim();
+  
+  // First try: exact word match (including first names)
+  let results = data.filter(person => {
+    if (!person.name) return false;
+    const nameParts = person.name.toLowerCase().split(/\s+/);
+    return nameParts.some(part => part === name);
+  }).map(item => ({ item, score: 0.1 }));
+  
+  // Second try: word starts with search term
   if (results.length === 0) {
-    results = data.filter(person =>
-      person.name && person.name.toLowerCase().split(/\s+/).some(part => part.startsWith(name))
-    ).map(item => ({ item, score: 0.5 }));
+    results = data.filter(person => {
+      if (!person.name) return false;
+      const nameParts = person.name.toLowerCase().split(/\s+/);
+      return nameParts.some(part => part.startsWith(name));
+    }).map(item => ({ item, score: 0.3 }));
   }
+  
+  // Third try: fuzzy search with Fuse.js
+  if (results.length === 0) {
+    const fuseResults = fuse.search(name);
+    results = fuseResults;
+  }
+  
+  // Fourth try: substring search
   if (results.length === 0) {
     results = data.filter(person =>
       person.name && person.name.toLowerCase().includes(name)
     ).map(item => ({ item, score: 0.7 }));
   }
+  
   results.sort((a, b) => (a.score || 1) - (b.score || 1));
   return results.map(r => r.item);
 }
@@ -128,28 +156,30 @@ app.get('/api/query', (req, res) => {
   }
 
   // 3. Check for name queries
-  const nameMatch = q.match(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?|)\s*([a-z\s]+)/i);
-  let name = q;
-  if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
-  let allMatches = findByName(name);
-  console.log('Matches found:', allMatches.map(p => p.name));
-  if (allMatches.length > 1) {
-    return res.json({
-      type: 'multiple',
-      people: allMatches,
-      suggestions: allMatches.map(p => p.name)
-    });
-  }
-  if (allMatches.length === 1) {
-    return res.json({
-      type: 'person',
-      person: allMatches[0],
-      suggestions: [
-        'Ask about their office hours on a specific day',
-        'Ask about another professor',
-        'Ask about their department'
-      ]
-    });
+  // Remove common titles and extract the name
+  let name = q.replace(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?)\s*/gi, '').trim();
+  
+  // If the query doesn't contain day or department keywords, treat it as a name search
+  if (name && !day && !dept) {
+    console.log('Matches found:', allMatches.map(p => p.name));
+    if (allMatches.length > 1) {
+      return res.json({
+        type: 'multiple',
+        people: allMatches,
+        suggestions: allMatches.map(p => p.name)
+      });
+    }
+    if (allMatches.length === 1) {
+      return res.json({
+        type: 'person',
+        person: allMatches[0],
+        suggestions: [
+          'Ask about their office hours on a specific day',
+          'Ask about another professor',
+          'Ask about their department'
+        ]
+      });
+    }
   }
 
   // 4. Contextual follow-up (if context is provided)
@@ -178,6 +208,12 @@ app.get('/api/query', (req, res) => {
   return res.status(404).json({ error: 'Sorry, I could not understand your question.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); console.log('Backend updated!');
+// Catch-all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+});
+console.log('Backend updated!');
