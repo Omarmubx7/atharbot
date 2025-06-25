@@ -52,17 +52,37 @@ function findByDepartment(dept) {
 }
 
 function findByName(name) {
-  let results = fuse.search(name);
+  name = name.toLowerCase().trim();
+  
+  // First try: exact word match (including first names)
+  let results = data.filter(person => {
+    if (!person.name) return false;
+    const nameParts = person.name.toLowerCase().split(/\s+/);
+    return nameParts.some(part => part === name);
+  }).map(item => ({ item, score: 0.1 }));
+  
+  // Second try: word starts with search term
   if (results.length === 0) {
-    results = data.filter(person =>
-      person.name && person.name.toLowerCase().split(/\s+/).some(part => part.startsWith(name))
-    ).map(item => ({ item, score: 0.5 }));
+    results = data.filter(person => {
+      if (!person.name) return false;
+      const nameParts = person.name.toLowerCase().split(/\s+/);
+      return nameParts.some(part => part.startsWith(name));
+    }).map(item => ({ item, score: 0.3 }));
   }
+  
+  // Third try: fuzzy search with Fuse.js
+  if (results.length === 0) {
+    const fuseResults = fuse.search(name);
+    results = fuseResults;
+  }
+  
+  // Fourth try: substring search
   if (results.length === 0) {
     results = data.filter(person =>
       person.name && person.name.toLowerCase().includes(name)
     ).map(item => ({ item, score: 0.7 }));
   }
+  
   results.sort((a, b) => (a.score || 1) - (b.score || 1));
   return results.map(r => r.item);
 }
@@ -136,28 +156,30 @@ app.get('/api/query', (req, res) => {
   }
 
   // 3. Check for name queries
-  const nameMatch = q.match(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?|)\s*([a-z\s]+)/i);
-  let name = q;
-  if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
-  let allMatches = findByName(name);
-  console.log('Matches found:', allMatches.map(p => p.name));
-  if (allMatches.length > 1) {
-    return res.json({
-      type: 'multiple',
-      people: allMatches,
-      suggestions: allMatches.map(p => p.name)
-    });
-  }
-  if (allMatches.length === 1) {
-    return res.json({
-      type: 'person',
-      person: allMatches[0],
-      suggestions: [
-        'Ask about their office hours on a specific day',
-        'Ask about another professor',
-        'Ask about their department'
-      ]
-    });
+  // Remove common titles and extract the name
+  let name = q.replace(/(professor|dr\.?|mr\.?|ms\.?|mrs\.?|eng\.?)\s*/gi, '').trim();
+  
+  // If the query doesn't contain day or department keywords, treat it as a name search
+  if (name && !day && !dept) {
+    console.log('Matches found:', allMatches.map(p => p.name));
+    if (allMatches.length > 1) {
+      return res.json({
+        type: 'multiple',
+        people: allMatches,
+        suggestions: allMatches.map(p => p.name)
+      });
+    }
+    if (allMatches.length === 1) {
+      return res.json({
+        type: 'person',
+        person: allMatches[0],
+        suggestions: [
+          'Ask about their office hours on a specific day',
+          'Ask about another professor',
+          'Ask about their department'
+        ]
+      });
+    }
   }
 
   // 4. Contextual follow-up (if context is provided)
