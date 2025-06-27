@@ -58,6 +58,7 @@ function findByName(name) {
       person.name && person.name.toLowerCase().split(/\s+/).some(part => part.startsWith(name))
     ).map(item => ({ item, score: 0.5 }));
   }
+  // Always fallback to includes, even for short/partial names
   if (results.length === 0) {
     results = data.filter(person =>
       person.name && person.name.toLowerCase().includes(name)
@@ -140,7 +141,7 @@ app.get('/api/query', (req, res) => {
   let name = q;
   if (nameMatch && nameMatch[2]) name = nameMatch[2].trim();
   let allMatches = findByName(name);
-  console.log('Matches found:', allMatches.map(p => p.name));
+  console.log('Matches found for', name, ':', allMatches.map(p => p.name));
   if (allMatches.length > 1) {
     return res.json({
       type: 'multiple',
