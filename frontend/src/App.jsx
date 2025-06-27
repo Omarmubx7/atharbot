@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/query';
+const PERSON_API_URL = import.meta.env.VITE_API_PERSON_URL || 'http://localhost:3001/api/person';
 
 // Color palettes for dark and light mode
 const PORTAL_LIGHT = {
@@ -99,34 +100,70 @@ function Markdown({ children, dark }) {
   );
 }
 
-function Suggestions({ suggestions, onClick, dark }) {
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return <>{text.slice(0, idx)}<span style={{ background: '#ffe066', color: '#d8432a', borderRadius: 3 }}>{text.slice(idx, idx + query.length)}</span>{text.slice(idx + query.length)}</>;
+}
+
+function SuggestionsDropdown({ suggestions, onSelect, loading, query, dark, activeIndex, setActiveIndex }) {
   if (!suggestions || suggestions.length === 0) return null;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, animation: 'fadeIn 0.5s' }}>
+    <ul
+      role="listbox"
+      aria-label="Suggestions"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: '100%',
+        zIndex: 10,
+        background: dark ? '#232b2f' : '#fff',
+        border: '1px solid #bfc9d1',
+        borderTop: 'none',
+        borderRadius: '0 0 12px 12px',
+        boxShadow: '0 4px 24px #0002',
+        maxHeight: 220,
+        overflowY: 'auto',
+        margin: 0,
+        padding: 0,
+        listStyle: 'none',
+        animation: 'fadeIn 0.2s',
+      }}
+    >
+      {loading && (
+        <li style={{ padding: 12, color: '#888', fontStyle: 'italic' }}>Loading...</li>
+      )}
       {suggestions.map((s, i) => (
-        <button
-          key={i}
-          onClick={() => onClick(s)}
+        <li
+          key={s.email || s.name || i}
+          role="option"
+          aria-selected={activeIndex === i}
+          tabIndex={-1}
+          onClick={() => onSelect(s)}
+          onMouseEnter={() => setActiveIndex(i)}
           style={{
-            background: dark ? '#23272f' : '#f1f0f0',
-            color: dark ? '#ffd700' : '#2563eb',
-            border: 'none',
-            borderRadius: 8,
-            padding: '6px 14px',
-            fontWeight: 600,
-            fontSize: 15,
+            background: activeIndex === i ? (dark ? '#333' : '#f4f7fa') : 'transparent',
+            color: dark ? '#fff' : '#23272f',
+            padding: '12px 18px',
             cursor: 'pointer',
-            boxShadow: dark ? '0 2px 8px #0004' : '0 2px 8px #007bff22',
-            transition: 'background 0.2s, color 0.2s, transform 0.15s',
+            borderBottom: '1px solid #eee',
+            fontWeight: 500,
+            fontSize: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
             outline: 'none',
-            animation: 'fadeIn 0.5s',
+            transition: 'background 0.2s',
           }}
-          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-        >{s}</button>
+        >
+          <span style={{ fontWeight: 700, fontSize: 17 }}>{highlightMatch(s.name, query)}</span>
+          <span style={{ fontSize: 13, color: dark ? '#ffd700' : '#2563eb' }}>{s.department}</span>
+          <span style={{ fontSize: 13, color: dark ? '#aaa' : '#888' }}>{s.email}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -146,6 +183,11 @@ export default function App() {
   const [typing, setTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
   const [lastUserMsg, setLastUserMsg] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef();
+  const debounceTimeout = useRef();
 
   useEffect(() => {
     localStorage.setItem('atharbot-dark', dark);
@@ -160,6 +202,31 @@ export default function App() {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages, typing]);
+
+  useEffect(() => {
+    if (input.trim()) {
+      setSearchLoading(true);
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+      debounceTimeout.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`${PERSON_API_URL}?name=${encodeURIComponent(input.trim())}`);
+          if (res.ok) {
+            const data = await res.json();
+            setSearchResults(Array.isArray(data) ? data : []);
+          } else {
+            setSearchResults([]);
+          }
+        } catch {
+          setSearchResults([]);
+        }
+        setSearchLoading(false);
+      }, 250);
+    } else {
+      setSearchResults([]);
+      setSearchLoading(false);
+    }
+    return () => debounceTimeout.current && clearTimeout(debounceTimeout.current);
+  }, [input]);
 
   const sendMessage = async (e, overrideInput) => {
     if (e) e.preventDefault();
@@ -240,6 +307,27 @@ export default function App() {
 
   const handleRegenerate = () => {
     if (lastUserMsg) sendMessage(null, lastUserMsg);
+  };
+
+  const handleInputKeyDown = (e) => {
+    if (searchResults.length > 0) {
+      if (e.key === 'ArrowDown') {
+        setActiveIndex(i => (i + 1) % searchResults.length);
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        setActiveIndex(i => (i - 1 + searchResults.length) % searchResults.length);
+        e.preventDefault();
+      } else if (e.key === 'Enter' && activeIndex >= 0) {
+        setInput(searchResults[activeIndex].name);
+        setSearchResults([]);
+        setActiveIndex(-1);
+        setTimeout(() => sendMessage(null, searchResults[activeIndex].name), 100);
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        setSearchResults([]);
+        setActiveIndex(-1);
+      }
+    }
   };
 
   const COLORS = getColors(dark);
@@ -351,31 +439,52 @@ export default function App() {
           {typing && <TypingBubble text={String(messages[messages.length-1]?.text) || ''} dark={dark} />}
         </div>
         {/* Input at the bottom */}
-        <form onSubmit={sendMessage} style={{ display: 'flex', gap: 8, padding: 20, borderTop: 'none', background: COLORS.cardBg, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, position: 'sticky', bottom: 0, zIndex: 2 }}>
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask anything about office hours, professors, days, or departments..."
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 8,
-              border: '1px solid #bfc9d1',
-              background: dark ? '#232b2f' : '#f4f7fa',
-              color: dark ? '#fff' : COLORS.text,
-              fontSize: 16,
-              transition: 'background 0.3s, color 0.3s'
-            }}
-            disabled={loading}
-          />
+        <form onSubmit={sendMessage} style={{ position: 'relative', display: 'flex', gap: 8, padding: 20, borderTop: 'none', background: COLORS.cardBg, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, position: 'sticky', bottom: 0, zIndex: 2 }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                setActiveIndex(-1);
+              }}
+              onKeyDown={handleInputKeyDown}
+              placeholder="Ask anything about office hours, professors, days, or departments..."
+              style={{
+                width: '100%',
+                padding: 12,
+                borderRadius: 8,
+                border: '1px solid #bfc9d1',
+                background: dark ? '#232b2f' : '#f4f7fa',
+                color: dark ? '#fff' : COLORS.text,
+                fontSize: 16,
+                transition: 'background 0.3s, color 0.3s',
+              }}
+              disabled={loading}
+              aria-autocomplete="list"
+              aria-controls="suggestions-list"
+              aria-activedescendant={activeIndex >= 0 ? `suggestion-${activeIndex}` : undefined}
+              autoComplete="off"
+            />
+            <SuggestionsDropdown
+              suggestions={searchResults}
+              onSelect={person => {
+                setInput(person.name);
+                setSearchResults([]);
+                setActiveIndex(-1);
+                setTimeout(() => sendMessage(null, person.name), 100);
+              }}
+              loading={searchLoading}
+              query={input}
+              dark={dark}
+              activeIndex={activeIndex}
+              setActiveIndex={setActiveIndex}
+            />
+          </div>
           <button type="submit" disabled={loading || !input.trim()} style={{
             background: COLORS.accent, color: COLORS.textLight, border: 'none', borderRadius: 8, padding: '0 20px', fontWeight: 600, fontSize: 16, boxShadow: '0 2px 8px #0002', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.3s, transform 0.2s', outline: 'none',
             transform: loading ? 'scale(1)' : 'scale(1)',
-          }}
-            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-          >Send</button>
+          }}>Send</button>
         </form>
       </div>
       <style>{`
