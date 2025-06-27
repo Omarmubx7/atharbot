@@ -3,8 +3,8 @@ import logo from './Screenshot_2025-06-21_015705-removebg-preview (1).png';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/query';
-const PERSON_API_URL = import.meta.env.VITE_API_PERSON_URL || 'http://localhost:3001/api/person';
+const API_URL = '/api/query';
+const PERSON_API_URL = '/api/person';
 
 // Color palettes for dark and light mode
 const PORTAL_LIGHT = {
